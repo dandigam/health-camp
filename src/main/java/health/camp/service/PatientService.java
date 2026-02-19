@@ -92,7 +92,7 @@ public class PatientService {
         List<SOAPNote> soapNotes = soapNoteRepository.findByPatientId(id, Pageable.unpaged()).getContent();
         response.setSoapNotes(soapNotes.stream().map(health.camp.service.SoapNoteService::toResponse).toList());
         List<Consultation> consultations = consultationRepository.findByPatientId(id, Pageable.unpaged()).getContent();
-        response.setConsultations(consultations.stream().map(health.camp.service.ConsultationService::toResponse).toList());
+       // response.setConsultations(consultations.stream().map(health.camp.service.ConsultationService::toResponse).toList());
         List<Prescription> prescriptions = prescriptionRepository.findByPatientId(id, Pageable.unpaged()).getContent();
         response.setPrescriptions(prescriptions.stream().map(health.camp.service.PrescriptionService::toResponse).toList());
         List<Payment> payments = paymentRepository.findByPatientId(id, Pageable.unpaged()).getContent();

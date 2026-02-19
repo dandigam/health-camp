@@ -5,6 +5,7 @@ import health.camp.dto.settings.UserSettingsResponse;
 import health.camp.dto.user.UserResponse;
 import health.camp.dto.user.UserUpdateRequest;
 import health.camp.service.UserService;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Users", description = "User profile and settings APIs")
 @RestController
 @RequestMapping("/api/users")
+@Hidden
 public class UserController {
 
     private final UserService userService;

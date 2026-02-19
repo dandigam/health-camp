@@ -2,6 +2,7 @@ package health.camp.controller;
 
 import health.camp.dto.discount.DiscountResponse;
 import health.camp.service.DiscountService;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Discounts", description = "Discount APIs")
 @RestController
 @RequestMapping("/api/discounts")
+@Hidden
 public class DiscountController {
 
     private final DiscountService discountService;

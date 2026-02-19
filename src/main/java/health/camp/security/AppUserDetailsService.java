@@ -1,6 +1,6 @@
 package health.camp.security;
 
-import health.camp.model.User;
+import health.camp.entity.User;
 import health.camp.repository.UserRepository;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,7 +24,7 @@ public class AppUserDetailsService implements UserDetailsService {
         User user = userRepository.findById(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
         return new org.springframework.security.core.userdetails.User(
-                user.getId(),
+                user.getUserName(),
                 user.getPasswordHash() != null ? user.getPasswordHash() : "",
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
         );

@@ -1,6 +1,7 @@
 package health.camp.controller;
 
 import health.camp.dto.upload.UploadResponse;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Tag(name = "Upload", description = "File upload APIs")
 @RestController
 @RequestMapping("/api")
+@Hidden
 public class UploadController {
 
     @Operation(summary = "Upload photo")

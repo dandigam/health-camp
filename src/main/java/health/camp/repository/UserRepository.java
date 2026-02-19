@@ -1,16 +1,17 @@
 package health.camp.repository;
 
-import health.camp.model.User;
+import health.camp.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
 @Repository
-public interface UserRepository extends MongoRepository<User, String> {
+public interface UserRepository extends JpaRepository<User, String> {
 
 
-    Optional<User> findByEmail(String email);
+    Optional<User> findByUserName(String userName);
 
     Optional<User> findByPhone(String phone);
 

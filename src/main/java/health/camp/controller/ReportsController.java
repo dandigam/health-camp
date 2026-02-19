@@ -2,6 +2,7 @@ package health.camp.controller;
 
 import health.camp.dto.reports.ReportsOverviewResponse;
 import health.camp.service.ReportsService;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Reports", description = "Reports APIs")
 @RestController
 @RequestMapping("/api/reports")
+@Hidden
 public class ReportsController {
 
     private final ReportsService reportsService;

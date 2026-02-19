@@ -3,6 +3,7 @@ package health.camp.controller;
 import health.camp.dto.doctor.DoctorRequest;
 import health.camp.dto.doctor.DoctorResponse;
 import health.camp.service.DoctorService;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -18,6 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/doctors")
 @CrossOrigin("*")
+@Hidden
 public class DoctorController {
 
     private final DoctorService doctorService;

@@ -2,9 +2,7 @@ package health.camp.service;
 
 import health.camp.dto.stock.StockItemRequest;
 import health.camp.dto.stock.StockItemResponse;
-import health.camp.model.Medicine;
 import health.camp.model.StockItem;
-import health.camp.model.Supplier;
 import health.camp.repository.MedicineRepository;
 import health.camp.repository.StockItemRepository;
 import health.camp.repository.SupplierRepository;
@@ -48,8 +46,8 @@ public class StockService {
     }
 
     public StockItemResponse create(StockItemRequest request) {
-        medicineRepository.findById(request.getMedicineId()).orElseThrow(() -> new ResourceNotFoundException("Medicine", request.getMedicineId()));
-        supplierRepository.findById(request.getSupplierId()).orElseThrow(() -> new ResourceNotFoundException("Supplier", request.getSupplierId()));
+      //  medicineRepository.findById(request.getMedicineId()).orElseThrow(() -> new ResourceNotFoundException("Medicine", request.getMedicineId()));
+       // supplierRepository.findById(request.getSupplierId()).orElseThrow(() -> new ResourceNotFoundException("Supplier", request.getSupplierId()));
         StockItem item = new StockItem();
         item.setId(UUID.randomUUID().toString());
         item.setMedicineId(request.getMedicineId());
@@ -73,11 +71,13 @@ public class StockService {
         dto.setExpiryDate(item.getExpiryDate());
         dto.setPurchaseDate(item.getPurchaseDate());
         dto.setSupplierId(item.getSupplierId());
-        medicineRepository.findById(item.getMedicineId()).ifPresent(m -> {
-            dto.setMedicineName(m.getName());
-            dto.setMedicineCode(m.getCode());
-        });
-        supplierRepository.findById(item.getSupplierId()).ifPresent(s -> dto.setSupplierName(s.getName()));
-        return dto;
+//        medicineRepository.findById(item.getMedicineId()).ifPresent(m -> {
+//            dto.setMedicineName(m.getName());
+//            dto.setMedicineCode(m.getCode());
+//        });
+//        supplierRepository.findById(item.getSupplierId()).ifPresent(s -> dto.setSupplierName(s.getName()));
+//
+//
+return dto;
     }
 }

@@ -4,9 +4,12 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDate;
-
+@Getter
+@Setter
 public class StockItemRequest {
 
     @NotBlank(message = "medicineId is required")
@@ -31,60 +34,4 @@ public class StockItemRequest {
 
     @NotBlank(message = "supplierId is required")
     private String supplierId;
-
-    public String getMedicineId() {
-        return medicineId;
-    }
-
-    public void setMedicineId(String medicineId) {
-        this.medicineId = medicineId;
-    }
-
-    public String getCampId() {
-        return campId;
-    }
-
-    public void setCampId(String campId) {
-        this.campId = campId;
-    }
-
-    public Integer getQuantity() {
-        return quantity;
-    }
-
-    public void setQuantity(Integer quantity) {
-        this.quantity = quantity;
-    }
-
-    public String getBatchNumber() {
-        return batchNumber;
-    }
-
-    public void setBatchNumber(String batchNumber) {
-        this.batchNumber = batchNumber;
-    }
-
-    public LocalDate getExpiryDate() {
-        return expiryDate;
-    }
-
-    public void setExpiryDate(LocalDate expiryDate) {
-        this.expiryDate = expiryDate;
-    }
-
-    public LocalDate getPurchaseDate() {
-        return purchaseDate;
-    }
-
-    public void setPurchaseDate(LocalDate purchaseDate) {
-        this.purchaseDate = purchaseDate;
-    }
-
-    public String getSupplierId() {
-        return supplierId;
-    }
-
-    public void setSupplierId(String supplierId) {
-        this.supplierId = supplierId;
-    }
 }

@@ -4,6 +4,7 @@ import health.camp.dto.prescription.DispenseRequest;
 import health.camp.dto.prescription.DispenseResponse;
 import health.camp.dto.prescription.PrescriptionResponse;
 import health.camp.service.PrescriptionService;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Prescriptions", description = "Prescription and dispense APIs")
 @RestController
 @RequestMapping("/api/prescriptions")
+@Hidden
 public class PrescriptionController {
 
     private final PrescriptionService prescriptionService;

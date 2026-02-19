@@ -3,6 +3,7 @@ package health.camp.controller;
 import health.camp.dto.stock.StockItemRequest;
 import health.camp.dto.stock.StockItemResponse;
 import health.camp.service.StockService;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Stock", description = "Stock management APIs")
 @RestController
 @RequestMapping("/api/stock")
+@Hidden
 public class StockController {
 
     private final StockService stockService;

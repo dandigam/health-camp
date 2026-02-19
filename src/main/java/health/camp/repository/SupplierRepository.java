@@ -1,9 +1,14 @@
 package health.camp.repository;
 
-import health.camp.model.Supplier;
-import org.springframework.data.mongodb.repository.MongoRepository;
+import health.camp.entity.Supplier;
+import health.camp.entity.WareHouse;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
-public interface SupplierRepository extends MongoRepository<Supplier, String> {
+public interface SupplierRepository extends JpaRepository<Supplier, Long> {
+
+    List<Supplier> findByWarehouse(WareHouse warehouse);
 }

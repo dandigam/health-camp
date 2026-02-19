@@ -4,7 +4,7 @@ import health.camp.dto.settings.UserSettingsRequest;
 import health.camp.dto.settings.UserSettingsResponse;
 import health.camp.dto.user.UserResponse;
 import health.camp.dto.user.UserUpdateRequest;
-import health.camp.model.User;
+import health.camp.entity.User;
 import health.camp.model.UserSettings;
 import health.camp.repository.UserRepository;
 import health.camp.repository.UserSettingsRepository;

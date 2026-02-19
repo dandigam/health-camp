@@ -6,6 +6,7 @@ import health.camp.dto.camp.CampStatsResponse;
 import health.camp.dto.doctor.DoctorResponse;
 import health.camp.service.CampService;
 import health.camp.service.DoctorService;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -23,6 +24,7 @@ import java.util.List;
 @RequestMapping("/api/camps")
 @CrossOrigin("*")
 @RequiredArgsConstructor
+@Hidden
 public class CampController {
 
     private final CampService campService;

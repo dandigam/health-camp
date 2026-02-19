@@ -1,17 +1,12 @@
 package health.camp.repository;
 
-import health.camp.model.Medicine;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.data.mongodb.repository.Query;
-import org.springframework.stereotype.Repository;
+import health.camp.entity.MedicineLookup;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-@Repository
-public interface MedicineRepository extends MongoRepository<Medicine, String> {
+import java.util.Optional;
 
-    @Query("{ $or: [ { 'name': { $regex: ?0, $options: 'i' } }, { 'category': { $regex: ?0, $options: 'i' } } ] }")
-    Page<Medicine> findBySearch(String search, Pageable pageable);
+public interface MedicineRepository extends JpaRepository<MedicineLookup, Long> {
 
-    Page<Medicine> findByCategory(String category, Pageable pageable);
+    Optional<MedicineLookup> findByName(String name);
 }
+

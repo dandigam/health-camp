@@ -4,6 +4,7 @@ import health.camp.dto.patient.PatientHistoryResponse;
 import health.camp.dto.patient.PatientRequest;
 import health.camp.dto.patient.PatientResponse;
 import health.camp.service.PatientService;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Patients", description = "Patient management APIs")
 @RestController
 @RequestMapping("/api/patients")
+@Hidden
 public class PatientController {
 
     private final PatientService patientService;

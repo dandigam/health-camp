@@ -2,6 +2,7 @@ package health.camp.controller;
 
 import health.camp.dto.payment.PaymentResponse;
 import health.camp.service.PaymentService;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Payments", description = "Payment APIs")
 @RestController
 @RequestMapping("/api/payments")
+@Hidden
 public class PaymentController {
 
     private final PaymentService paymentService;

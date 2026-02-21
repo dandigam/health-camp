@@ -13,7 +13,6 @@ import health.camp.repository.StateRepository;
 import health.camp.repository.SupplierRepository;
 import health.camp.repository.WareHouseRepository;
 import health.camp.repository.WarehouseSupplierMedicineRepository;
-import health.camp.repository.WarehouseInventoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +28,6 @@ public class SupplierService {
     private final WareHouseRepository wareHouseRepository;
     private final MedicineRepository medicineRepository;
     private final WarehouseSupplierMedicineRepository warehouseSupplierMedicineRepository;
-    private final WarehouseInventoryRepository warehouseInventoryRepository;
     private final StateRepository stateRepository;
     private final DistrictRepository districtRepository;
     private final MandalRepository mandalRepository;
@@ -199,23 +197,14 @@ public class SupplierService {
 
         return supplierRepository.findByWarehouse(warehouse).stream()
                 .map(supplier -> {
-                    // Fetch medicines for this supplier with current inventory qty
+                    // Fetch medicines for this supplier
                     List<SupplierDto.MedicineDto> medicines = warehouseSupplierMedicineRepository
                             .findBySupplier(supplier).stream()
-                            .map(wsm -> {
-                                // Get current inventory quantity for this medicine in this warehouse
-                                Integer currentQty = warehouseInventoryRepository
-                                        .findByWarehouseAndMedicine(warehouse, wsm.getMedicine())
-                                        .map(inv -> inv.getTotalQty())
-                                        .orElse(0);
-                                
-                                return SupplierDto.MedicineDto.builder()
-                                        .id(wsm.getMedicine().getMedicineId())
-                                        .name(wsm.getMedicine().getName())
-                                        .type(wsm.getMedicine().getType())
-                                        .currentQty(currentQty)
-                                        .build();
-                            })
+                            .map(wsm -> SupplierDto.MedicineDto.builder()
+                                    .id(wsm.getMedicine().getMedicineId())
+                                    .name(wsm.getMedicine().getName())
+                                    .type(wsm.getMedicine().getType())
+                                    .build())
                             .collect(Collectors.toList());
 
                     // Fetch names from IDs

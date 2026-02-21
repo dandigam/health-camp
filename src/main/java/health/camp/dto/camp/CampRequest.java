@@ -1,6 +1,5 @@
 package health.camp.dto.camp;
 
-import health.camp.model.Location;
 import health.camp.model.enums.CampStatus;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
@@ -9,7 +8,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 @Data
-public class CampRequest extends Location {
+public class CampRequest {
 
     @NotBlank
     private String name;

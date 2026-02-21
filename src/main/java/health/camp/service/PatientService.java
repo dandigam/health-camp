@@ -3,129 +3,221 @@ package health.camp.service;
 import health.camp.dto.patient.PatientHistoryResponse;
 import health.camp.dto.patient.PatientRequest;
 import health.camp.dto.patient.PatientResponse;
-import health.camp.model.Camp;
-import health.camp.model.Consultation;
-import health.camp.model.Patient;
-import health.camp.model.Payment;
-import health.camp.model.Prescription;
-import health.camp.model.SOAPNote;
-import health.camp.repository.CampRepository;
-import health.camp.repository.ConsultationRepository;
+import health.camp.entity.Address;
+import health.camp.entity.MedicalConditionLookup;
+import health.camp.entity.Patient;
+import health.camp.entity.PatientMedicalCondition;
+import health.camp.entity.PatientOriginalHistory;
+import health.camp.repository.MedicalConditionLookupRepository;
 import health.camp.repository.PatientRepository;
-import health.camp.repository.PaymentRepository;
-import health.camp.repository.PrescriptionRepository;
-import health.camp.repository.SOAPNoteRepository;
 import health.camp.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class PatientService {
 
-    private final CountersService countersService;
     private final PatientRepository patientRepository;
-    private final CampRepository campRepository;
-    private final SOAPNoteRepository soapNoteRepository;
-    private final ConsultationRepository consultationRepository;
-    private final PrescriptionRepository prescriptionRepository;
-    private final PaymentRepository paymentRepository;
+    private final MedicalConditionLookupRepository medicalConditionLookupRepository;
 
-
-    public Page<PatientResponse> list(String campId, String search, Pageable pageable) {
+    /**
+     * Get all patients with optional search
+     */
+    public Page<PatientResponse> list(String search, Pageable pageable) {
         Page<Patient> page;
-        if (campId != null && !campId.isBlank()) {
-            if (search != null && !search.isBlank()) {
-                page = patientRepository.findByCampIdAndSearch(campId, search, pageable);
-            } else {
-                page = patientRepository.findByCampId(campId, pageable);
-            }
-        } else if (search != null && !search.isBlank()) {
-            page = patientRepository.findBySearch(search, pageable);
+        if (search != null && !search.isBlank()) {
+            page = patientRepository.searchPatients(search, pageable);
         } else {
             page = patientRepository.findAll(pageable);
         }
         return page.map(this::toResponse);
     }
 
-    public PatientResponse getById(String id) {
-        Patient patient = patientRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Patient", id));
+    /**
+     * Get patient by ID
+     */
+    public PatientResponse getById(Long id) {
+        Patient patient = patientRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Patient", id.toString()));
         return toResponse(patient);
     }
 
-    public PatientResponse create(PatientRequest request) {
-        //Camp camp = campRepository.findById(1L).orElseThrow(() -> new ResourceNotFoundException("Camp", request.getCampId()));
-        //String patientId = generatePatientId(camp);
-        Patient patient = new Patient();
-        patient.setId(countersService.getNextSequence("patient_seq"));
-        patient.setPatientId("TEST");
-       // patient.setCampId(request.getCampId());
-        patient.setName(request.getName());
-        patient.setSurname(request.getSurname());
-        patient.setFatherName(request.getFatherName());
+    /**
+     * Save patient - creates if no ID, updates if ID exists
+     */
+    @Transactional
+    public PatientResponse save(PatientRequest request) {
+        Patient patient;
+
+        if (request.getId() != null) {
+            // Update existing
+            patient = patientRepository.findById(request.getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Patient", request.getId().toString()));
+        } else {
+            // Create new
+            patient = new Patient();
+            patient.setPatientId(generatePatientId());
+        }
+
+        // Update basic fields
+        patient.setFirstName(request.getFirstName());
+        patient.setLastName(request.getLastName());
+        patient.setFatherSpouseName(request.getFatherSpouseName());
         patient.setGender(request.getGender());
         patient.setAge(request.getAge());
-        patient.setPhone(request.getPhone());
-        patient.setAddress(request.getAddress());
-        patient.setVillage(request.getVillage());
-        patient.setDistrict(request.getDistrict());
-        patient.setState(request.getState());
-        patient.setPhotoUrl(request.getPhotoUrl());
         patient.setMaritalStatus(request.getMaritalStatus());
-        patient.setCreatedAt(LocalDateTime.now());
+        patient.setPhoneNumber(request.getPhoneNumber());
+        patient.setPhotoUrl(request.getPhotoUrl());
+        patient.setPaymentType(request.getPaymentType());
+        patient.setPaymentPercentage(request.getPaymentPercentage());
+        patient.setHasMedicalHistory(request.getHasMedicalHistory());
+
+        // Update address
+        if (request.getAddress() != null) {
+            Address address = patient.getAddress();
+            if (address == null) {
+                address = new Address();
+            }
+            address.setStateId(request.getAddress().getStateId());
+            address.setState(request.getAddress().getState());
+            address.setDistrictId(request.getAddress().getDistrictId());
+            address.setDistrict(request.getAddress().getDistrict());
+            address.setMandalId(request.getAddress().getMandalId());
+            address.setMandal(request.getAddress().getMandal());
+            address.setCityVillage(request.getAddress().getCityVillage());
+            address.setStreetAddress(request.getAddress().getStreetAddress());
+            address.setPinCode(request.getAddress().getPinCode());
+            patient.setAddress(address);
+        }
+
+        // Update medical history
+        if (Boolean.TRUE.equals(request.getHasMedicalHistory()) && request.getMedicalHistory() != null) {
+            PatientOriginalHistory history = patient.getMedicalHistory();
+            if (history == null) {
+                history = new PatientOriginalHistory();
+            }
+            history.setPreviousHospitalName(request.getMedicalHistory().getPreviousHospitalName());
+            history.setCurrentMedications(request.getMedicalHistory().getCurrentMedications());
+            history.setPastSurgeryMajorIllness(request.getMedicalHistory().getPastSurgeryMajorIllness());
+
+            // Handle conditions
+            if (request.getMedicalHistory().getConditions() != null) {
+                // Clear existing conditions
+                if (history.getConditions() != null) {
+                    history.getConditions().clear();
+                } else {
+                    history.setConditions(new ArrayList<>());
+                }
+
+                // Add new conditions
+                PatientOriginalHistory finalHistory = history;
+                for (PatientRequest.MedicalConditionDto condDto : request.getMedicalHistory().getConditions()) {
+                    MedicalConditionLookup lookup = medicalConditionLookupRepository.findById(condDto.getConditionId())
+                            .orElseThrow(() -> new ResourceNotFoundException("MedicalCondition", condDto.getConditionId().toString()));
+
+                    PatientMedicalCondition condition = PatientMedicalCondition.builder()
+                            .patientHistory(finalHistory)
+                            .condition(lookup)
+                            .otherDetails(condDto.getOtherDetails())
+                            .build();
+                    finalHistory.getConditions().add(condition);
+                }
+            }
+
+            patient.setMedicalHistory(history);
+        } else if (Boolean.FALSE.equals(request.getHasMedicalHistory())) {
+            patient.setMedicalHistory(null);
+        }
+
         patient = patientRepository.save(patient);
         return toResponse(patient);
     }
 
-    public PatientHistoryResponse getHistory(String id) {
-        Patient patient = patientRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Patient", id));
-        PatientHistoryResponse response = new PatientHistoryResponse();
-        response.setPatient(toResponse(patient));
-        List<SOAPNote> soapNotes = soapNoteRepository.findByPatientId(id, Pageable.unpaged()).getContent();
-        response.setSoapNotes(soapNotes.stream().map(health.camp.service.SoapNoteService::toResponse).toList());
-        List<Consultation> consultations = consultationRepository.findByPatientId(id, Pageable.unpaged()).getContent();
-       // response.setConsultations(consultations.stream().map(health.camp.service.ConsultationService::toResponse).toList());
-        List<Prescription> prescriptions = prescriptionRepository.findByPatientId(id, Pageable.unpaged()).getContent();
-        response.setPrescriptions(prescriptions.stream().map(health.camp.service.PrescriptionService::toResponse).toList());
-        List<Payment> payments = paymentRepository.findByPatientId(id, Pageable.unpaged()).getContent();
-        response.setPayments(payments.stream().map(health.camp.service.PaymentService::toResponse).toList());
-        return response;
+    /**
+     * Get all active medical conditions for lookup
+     */
+    public List<MedicalConditionLookup> getMedicalConditions() {
+        return medicalConditionLookupRepository.findByIsActiveTrueOrderByDisplayOrderAsc();
     }
 
-    private String generatePatientId(Camp camp) {
-        String prefix = camp.getName().replaceAll("[^A-Za-z]", "").toUpperCase();
-        if (prefix.length() > 4) prefix = prefix.substring(0, 4);
-        if (prefix.isEmpty()) prefix = "CAMP";
-        String datePart = DateTimeFormatter.ofPattern("MMMdd").format(java.time.LocalDate.now()).toUpperCase();
-        long count = patientRepository.countByCampId(camp.getId()) + 1;
-        return prefix + "-" + datePart + "-" + count;
+    private String generatePatientId() {
+        String datePart = DateTimeFormatter.ofPattern("yyyyMMdd").format(java.time.LocalDate.now());
+        long count = patientRepository.count() + 1;
+        return "PAT-" + datePart + "-" + String.format("%05d", count);
     }
 
     public PatientResponse toResponse(Patient patient) {
-        PatientResponse dto = new PatientResponse();
-        dto.setId(patient.getId());
-        dto.setPatientId(patient.getPatientId());
-        dto.setCampId(patient.getCampId());
-        dto.setName(patient.getName());
-        dto.setSurname(patient.getSurname());
-        dto.setFatherName(patient.getFatherName());
-        dto.setAge(patient.getAge());
-        dto.setGender(patient.getGender());
-        dto.setPhone(patient.getPhone());
-        dto.setAddress(patient.getAddress());
-        dto.setVillage(patient.getVillage());
-        dto.setDistrict(patient.getDistrict());
-        dto.setState(patient.getState());
-        dto.setPhotoUrl(patient.getPhotoUrl());
-        dto.setCreatedAt(patient.getCreatedAt());
-        return dto;
+        PatientResponse.PatientResponseBuilder builder = PatientResponse.builder()
+                .id(patient.getId())
+                .patientId(patient.getPatientId())
+                .firstName(patient.getFirstName())
+                .lastName(patient.getLastName())
+                .fatherSpouseName(patient.getFatherSpouseName())
+                .gender(patient.getGender())
+                .age(patient.getAge())
+                .maritalStatus(patient.getMaritalStatus())
+                .phoneNumber(patient.getPhoneNumber())
+                .photoUrl(patient.getPhotoUrl())
+                .paymentType(patient.getPaymentType())
+                .paymentPercentage(patient.getPaymentPercentage())
+                .hasMedicalHistory(patient.getHasMedicalHistory())
+                .createdBy(patient.getCreatedBy())
+                .createdAt(patient.getCreatedAt())
+                .updatedBy(patient.getUpdatedBy())
+                .updatedAt(patient.getUpdatedAt());
+
+        // Map address
+        if (patient.getAddress() != null) {
+            Address addr = patient.getAddress();
+            builder.address(PatientResponse.AddressDto.builder()
+                    .id(addr.getId())
+                    .stateId(addr.getStateId())
+                    .state(addr.getState())
+                    .districtId(addr.getDistrictId())
+                    .district(addr.getDistrict())
+                    .mandalId(addr.getMandalId())
+                    .mandal(addr.getMandal())
+                    .cityVillage(addr.getCityVillage())
+                    .streetAddress(addr.getStreetAddress())
+                    .pinCode(addr.getPinCode())
+                    .build());
+        }
+
+        // Map medical history
+        if (patient.getMedicalHistory() != null) {
+            PatientOriginalHistory hist = patient.getMedicalHistory();
+            List<PatientResponse.MedicalConditionDto> conditionDtos = new ArrayList<>();
+
+            if (hist.getConditions() != null) {
+                conditionDtos = hist.getConditions().stream()
+                        .map(c -> PatientResponse.MedicalConditionDto.builder()
+                                .id(c.getId())
+                                .conditionId(c.getCondition().getId())
+                                .conditionName(c.getCondition().getName())
+                                .otherDetails(c.getOtherDetails())
+                                .build())
+                        .collect(Collectors.toList());
+            }
+
+            builder.medicalHistory(PatientResponse.MedicalHistoryDto.builder()
+                    .id(hist.getId())
+                    .conditions(conditionDtos)
+                    .previousHospitalName(hist.getPreviousHospitalName())
+                    .currentMedications(hist.getCurrentMedications())
+                    .pastSurgeryMajorIllness(hist.getPastSurgeryMajorIllness())
+                    .build());
+        }
+
+        return builder.build();
     }
 }

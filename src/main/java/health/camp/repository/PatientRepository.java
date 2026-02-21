@@ -1,24 +1,26 @@
 package health.camp.repository;
 
-import health.camp.model.Patient;
+import health.camp.entity.Patient;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.data.mongodb.repository.Query;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @Repository
-public interface PatientRepository extends MongoRepository<Patient, String> {
+public interface PatientRepository extends JpaRepository<Patient, Long> {
 
-    long countByCampId(Long campId);
+    Optional<Patient> findByPatientId(String patientId);
 
-    boolean existsByCampIdAndPatientId(String campId, String patientId);
+    boolean existsByPatientId(String patientId);
 
-    Page<Patient> findByCampId(String campId, Pageable pageable);
-
-    @Query("{ 'campId': ?0, $or: [ { 'patientId': { $regex: ?1, $options: 'i' } }, { 'name': { $regex: ?1, $options: 'i' } }, { 'surname': { $regex: ?1, $options: 'i' } } ] }")
-    Page<Patient> findByCampIdAndSearch(String campId, String search, Pageable pageable);
-
-    @Query("{ $or: [ { 'patientId': { $regex: ?0, $options: 'i' } }, { 'name': { $regex: ?0, $options: 'i' } }, { 'surname': { $regex: ?0, $options: 'i' } } ] }")
-    Page<Patient> findBySearch(String search, Pageable pageable);
+    @Query("SELECT p FROM Patient p WHERE " +
+           "LOWER(p.firstName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(p.lastName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(p.patientId) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(p.phoneNumber) LIKE LOWER(CONCAT('%', :search, '%'))")
+    Page<Patient> searchPatients(@Param("search") String search, Pageable pageable);
 }

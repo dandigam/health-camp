@@ -65,21 +65,10 @@ public class PatientResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class MedicalHistoryDto {
-        private Long id;
-        private List<MedicalConditionDto> conditions;
-        private String previousHospitalName;
+        private List<Long> conditions;
+        private String previousHospital;
         private String currentMedications;
-        private String pastSurgeryMajorIllness;
+        private String pastSurgery;
     }
 
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class MedicalConditionDto {
-        private Long id;
-        private Long conditionId;
-        private String conditionName;
-        private String otherDetails;
-    }
 }

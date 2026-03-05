@@ -19,6 +19,8 @@ public class User extends BaseEntity {
     @Column(name = "id")
     private Long id;
 
+
+
     @Column(name = "name", nullable = false, length = 255)
     private String name;
 
@@ -38,6 +40,6 @@ public class User extends BaseEntity {
     @Column(name = "role", nullable = false, length = 50)
     private UserRole role;
 
-    @Column(name = "avatar", length = 255)
+    @Column(name = "avatar")
     private String avatar;
 }

@@ -3,6 +3,7 @@ package health.camp.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import health.camp.model.enums.Status;
 
 @Entity
 @Table(name = "supplier_request_items")
@@ -37,19 +38,6 @@ public class SupplierRequestItem extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 15)
-    private Status status; // PENDING, RECEIVED, PARTIAL
+    private Status status;
 
-    @PrePersist
-    protected void onCreate() {
-        if (status == null) {
-            status = Status.PENDING;
-        }
-        if (receivedQuantity == null) {
-            receivedQuantity = 0;
-        }
-    }
-
-    public enum Status {
-        PENDING, RECEIVED, PARTIAL
-    }
 }

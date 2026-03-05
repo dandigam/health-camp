@@ -2,12 +2,17 @@ package health.camp.dto.user;
 
 import health.camp.dto.WareHouseDTO;
 import health.camp.model.enums.UserRole;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
-import java.security.Permissions;
 import java.util.List;
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserResponse {
 
     private Long id;
@@ -16,9 +21,10 @@ public class UserResponse {
     private String phone;
     private UserRole role;
     private String avatar;
+    private String roleDisplayName;
 
-    private WareHouseDTO wareHouse;
     private List<String> permissions;
 
+    private UserContextDTO context;
 
 }

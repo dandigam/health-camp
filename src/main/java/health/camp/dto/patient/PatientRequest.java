@@ -49,6 +49,12 @@ public class PatientRequest {
     @Size(max = 2048)
     private String photoUrl;
 
+    private boolean encounterCreate;
+
+    private Long campEventId;
+    private Long doctorId;
+
+
     // Address
     @Valid
     private AddressDto address;
@@ -84,18 +90,10 @@ public class PatientRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class MedicalHistoryDto {
-        private List<MedicalConditionDto> conditions;
-        private String previousHospitalName;
+        private List<Long> conditions;
+        private String previousHospital;
         private String currentMedications;
-        private String pastSurgeryMajorIllness;
+        private String pastSurgery;
     }
 
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class MedicalConditionDto {
-        private Long conditionId;  // Reference to MedicalConditionLookup
-        private String otherDetails;  // Additional details if needed
-    }
 }

@@ -10,7 +10,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -26,6 +26,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/patients")
 @RequiredArgsConstructor
+@CrossOrigin("*")  // Allow CORS for all origins (adjust as needed)
 public class PatientController {
 
     private final PatientService patientService;
@@ -34,7 +35,15 @@ public class PatientController {
     @GetMapping
     public ResponseEntity<Page<PatientResponse>> list(
             @RequestParam(required = false) String search,
-            @PageableDefault(size = 20) Pageable pageable) {
+            @RequestParam(required = false, defaultValue = "firstName") String sort,
+            @RequestParam(required = false, defaultValue = "asc") String direction,
+            @RequestParam(required = false, defaultValue = "0") Integer page,
+            @RequestParam(required = false, defaultValue = "20") Integer size) {
+        // List of valid Patient entity properties
+        List<String> validSortProperties = List.of("id", "patientId", "firstName", "lastName", "fatherSpouseName", "gender", "age", "maritalStatus", "phoneNumber", "photoUrl", "hasMedicalHistory");
+        String sortProperty = validSortProperties.contains(sort) ? sort : "firstName";
+        org.springframework.data.domain.Sort.Direction sortDirection = direction.equalsIgnoreCase("desc") ? org.springframework.data.domain.Sort.Direction.DESC : org.springframework.data.domain.Sort.Direction.ASC;
+        Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by(sortDirection, sortProperty));
         return ResponseEntity.ok(patientService.list(search, pageable));
     }
 

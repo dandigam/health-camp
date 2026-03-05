@@ -17,6 +17,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import health.camp.model.enums.Status;
 
 @Service
 @RequiredArgsConstructor
@@ -39,9 +40,9 @@ public class SupplierOrderRequestService {
                 .orElseThrow(() -> new RuntimeException("Supplier not found"));
 
         // Create the request - default to DRAFT, or use provided status
-        SupplierRequest.Status status = SupplierRequest.Status.DRAFT;
+        Status status = Status.DRAFT;
         if (dto.getStatus() != null) {
-            status = SupplierRequest.Status.valueOf(dto.getStatus());
+            status = Status.valueOf(dto.getStatus());
         }
 
         SupplierRequest request = SupplierRequest.builder()
@@ -65,7 +66,7 @@ public class SupplierOrderRequestService {
                         .requestedQuantity(itemDto.getRequestedQuantity())
                         .receivedQuantity(0)
                         .unitPrice(itemDto.getUnitPrice())
-                        .status(SupplierRequestItem.Status.PENDING)
+                        .status(status)
                         .build();
 
                 supplierRequestItemRepository.save(item);
@@ -84,7 +85,7 @@ public class SupplierOrderRequestService {
 
         // Update status if provided
         if (dto.getStatus() != null) {
-            request.setStatus(SupplierRequest.Status.valueOf(dto.getStatus()));
+            request.setStatus(Status.valueOf(dto.getStatus()));
         }
 
         supplierRequestRepository.save(request);
@@ -122,7 +123,7 @@ public class SupplierOrderRequestService {
                         item.setUnitPrice(itemDto.getUnitPrice());
                     }
                     if (itemDto.getStatus() != null) {
-                        item.setStatus(SupplierRequestItem.Status.valueOf(itemDto.getStatus()));
+                        item.setStatus(Status.valueOf(dto.getStatus()));
                     }
 
                     supplierRequestItemRepository.save(item);
@@ -164,7 +165,7 @@ public class SupplierOrderRequestService {
                                 .requestedQuantity(itemDto.getRequestedQuantity())
                                 .receivedQuantity(0)
                                 .unitPrice(itemDto.getUnitPrice())
-                                .status(SupplierRequestItem.Status.PENDING)
+                                .status(Status.valueOf(dto.getStatus()))
                                 .build();
 
                         supplierRequestItemRepository.save(newItem);
@@ -196,7 +197,7 @@ public class SupplierOrderRequestService {
         WareHouse warehouse = wareHouseRepository.findById(warehouseId)
                 .orElseThrow(() -> new RuntimeException("Warehouse not found"));
 
-        return supplierRequestRepository.findByWarehouseAndStatus(warehouse, SupplierRequest.Status.valueOf(status))
+        return supplierRequestRepository.findByWarehouseAndStatus(warehouse, Status.valueOf(status))
                 .stream()
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
@@ -208,7 +209,13 @@ public class SupplierOrderRequestService {
                 .orElseThrow(() -> new RuntimeException("Request not found"));
 
         // Items will be deleted due to cascade
-        supplierRequestRepository.delete(request);
+        request.setStatus(Status.CANCELLED);
+        supplierRequestRepository.save(request);   
+        supplierRequestItemRepository.findByRequest(request).forEach(item -> {
+            item.setStatus(Status.CANCELLED);
+            supplierRequestItemRepository.save(item);
+        });
+
     }
 
     @Transactional
@@ -219,8 +226,8 @@ public class SupplierOrderRequestService {
         if (!item.getRequest().getRequestId().equals(requestId)) {
             throw new RuntimeException("Item does not belong to this request");
         }
-
-        supplierRequestItemRepository.delete(item);
+       item.setStatus(Status.CANCELLED);
+        supplierRequestItemRepository.save(item);
     }
 
     @Transactional
@@ -228,7 +235,7 @@ public class SupplierOrderRequestService {
         SupplierRequest request = supplierRequestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Request not found"));
 
-        request.setStatus(SupplierRequest.Status.valueOf(status));
+        request.setStatus(Status.valueOf(status));
         supplierRequestRepository.save(request);
 
         return mapToDto(request);

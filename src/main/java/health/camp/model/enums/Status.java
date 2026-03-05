@@ -1,5 +1,5 @@
 package health.camp.model.enums;
 
 public enum Status {
-        ACTIVE, INACTIVE
+        ACTIVE, INACTIVE, PENDING, RECEIVED, PARTIAL, CANCELLED, COMPLETED, APPROVED, REJECTED, EXPIRED, DRAFT, ARCHIVED, DELETED
     }

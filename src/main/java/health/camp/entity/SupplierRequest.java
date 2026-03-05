@@ -6,6 +6,8 @@ import lombok.experimental.SuperBuilder;
 
 import java.util.List;
 
+import health.camp.model.enums.Status;
+
 @Entity
 @Table(name = "supplier_requests")
 @Getter
@@ -30,12 +32,9 @@ public class SupplierRequest extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 15)
-    private Status status; // PENDING, APPROVED, SENT, RECEIVED
+    private Status status; 
 
     @OneToMany(mappedBy = "request", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SupplierRequestItem> items;
-
-    public enum Status {
-        DRAFT, PENDING, APPROVED, SENT, RECEIVED
-    }
 }
+

@@ -30,7 +30,7 @@ public class WareHouseService {
         user.setPhone(saved.getPhoneNumber());
         user.setUserName("Warehouse");
         user.setPasswordHash("Warehouse");
-        user.setRole(UserRole.WARE_HOUSE);
+        user.setRole(UserRole.WAREHOUSE);
        user =  userRepository.save(user);
         wareHouse.setUserId(user.getId());
         saved = repository.save(wareHouse);

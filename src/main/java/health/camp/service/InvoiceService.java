@@ -1,8 +1,10 @@
 package health.camp.service;
 
+import health.camp.dto.stock.InvoiceDocumentDto;
 import health.camp.dto.stock.InvoiceDto;
 import health.camp.dto.stock.InvoiceStockDto;
 import health.camp.entity.*;
+import health.camp.model.enums.InvoiceType;
 import health.camp.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -10,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -24,23 +27,61 @@ public class InvoiceService {
     private final WareHouseRepository wareHouseRepository;
     private final MedicineRepository medicineRepository;
     private final WarehouseInventoryRepository warehouseInventoryRepository;
+    private final InvoiceDocumentRepository invoiceDocumentRepository;
+    private final InvoiceDocumentService invoiceDocumentService;
 
     @Transactional
-    public InvoiceDto createInvoice(InvoiceDto dto) {
+    public InvoiceDto saveInvoice(InvoiceDto dto) {
         Supplier supplier = supplierRepository.findById(dto.getSupplierId())
                 .orElseThrow(() -> new RuntimeException("Supplier not found with id: " + dto.getSupplierId()));
 
         WareHouse warehouse = wareHouseRepository.findById(dto.getWarehouseId())
                 .orElseThrow(() -> new RuntimeException("Warehouse not found with id: " + dto.getWarehouseId()));
 
-        Invoice invoice = Invoice.builder()
-                .supplier(supplier)
-                .paymentMode(dto.getPaymentMode())
-                .invoiceNumber(dto.getInvoiceNumber())
-                .invoiceAmount(dto.getInvoiceAmount())
-                .invoiceDate(dto.getInvoiceDate())
-                .warehouse(warehouse)
-                .build();
+        Invoice invoice;
+        boolean isUpdate = dto.getId() != null;
+
+        if (isUpdate) {
+            // Update existing invoice
+            invoice = invoiceRepository.findById(dto.getId())
+                    .orElseThrow(() -> new RuntimeException("Invoice not found with id: " + dto.getId()));
+            invoice.setSupplier(supplier);
+            invoice.setPaymentMode(dto.getPaymentMode());
+            invoice.setInvoiceNumber(dto.getInvoiceNumber());
+            invoice.setInvoiceAmount(dto.getInvoiceAmount());
+            invoice.setInvoiceDate(dto.getInvoiceDate());
+            invoice.setWarehouse(warehouse);
+            
+            // For update: Remove old stock items that are not in the new request
+            // Get IDs of items in the request
+            List<Long> requestItemIds = dto.getItems() != null ? 
+                    dto.getItems().stream()
+                            .filter(item -> item.getId() != null)
+                            .map(InvoiceStockDto::getId)
+                            .collect(Collectors.toList()) 
+                    : new ArrayList<>();
+            
+            // Get existing items and remove those not in the request
+            List<InvoiceStock> existingItems = invoiceStockRepository.findByInvoiceId(dto.getId());
+            for (InvoiceStock existingItem : existingItems) {
+                if (!requestItemIds.contains(existingItem.getId())) {
+                    // Reverse the inventory quantity before deleting
+                    subtractFromWarehouseInventory(warehouse, existingItem.getMedicine(), existingItem.getQuantity());
+                    invoiceStockRepository.delete(existingItem);
+                }
+            }
+        } else {
+            // Create new invoice
+            invoice = Invoice.builder()
+                    .supplier(supplier)
+                    .paymentMode(dto.getPaymentMode())
+                    .invoiceNumber(dto.getInvoiceNumber())
+                    .invoiceAmount(dto.getInvoiceAmount())
+                    .invoiceDate(dto.getInvoiceDate())
+                    .warehouse(warehouse)
+                    .type(InvoiceType.DIRECT)
+                    .build();
+        }
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
@@ -77,25 +118,64 @@ public class InvoiceService {
                             .orElseThrow(() -> new RuntimeException("Medicine not found with id: " + itemDto.getMedicineId()));
                 }
 
-                // Save invoice stock item
-                InvoiceStock stock = InvoiceStock.builder()
-                        .invoice(savedInvoice)
-                        .medicine(medicine)
-                        .hsnNo(itemDto.getHsnNo())
-                        .batchNo(itemDto.getBatchNo())
-                        .expDate(itemDto.getExpDate())
-                        .quantity(itemDto.getQuantity())
-                        .warehouse(warehouse)
-                        .build();
+                // Check if this is an existing stock item (update) or new item
+                InvoiceStock stock;
+                if (itemDto.getId() != null) {
+                    // Update existing stock item
+                    stock = invoiceStockRepository.findById(itemDto.getId())
+                            .orElseThrow(() -> new RuntimeException("Invoice stock not found with id: " + itemDto.getId()));
+                    
+                    // Calculate quantity difference for inventory update
+                    int quantityDiff = itemDto.getQuantity() - stock.getQuantity();
+                    
+                    stock.setMedicine(medicine);
+                    stock.setHsnNo(itemDto.getHsnNo());
+                    stock.setBatchNo(itemDto.getBatchNo());
+                    stock.setExpDate(itemDto.getExpDate());
+                    stock.setQuantity(itemDto.getQuantity());
+                    stock.setWarehouse(warehouse);
+                    
+                    invoiceStockRepository.save(stock);
+                    
+                    // Update warehouse inventory with the difference
+                    if (quantityDiff != 0) {
+                        addToWarehouseInventory(warehouse, medicine, quantityDiff);
+                    }
+                } else {
+                    // Create new stock item
+                    stock = InvoiceStock.builder()
+                            .invoice(savedInvoice)
+                            .medicine(medicine)
+                            .hsnNo(itemDto.getHsnNo())
+                            .batchNo(itemDto.getBatchNo())
+                            .expDate(itemDto.getExpDate())
+                            .quantity(itemDto.getQuantity())
+                            .warehouse(warehouse)
+                            .build();
 
-                invoiceStockRepository.save(stock);
+                    invoiceStockRepository.save(stock);
 
-                // Update warehouse inventory - add quantity to existing or create new
-                addToWarehouseInventory(warehouse, medicine, itemDto.getQuantity());
+                    // Update warehouse inventory - add quantity to existing or create new
+                    addToWarehouseInventory(warehouse, medicine, itemDto.getQuantity());
+                }
             }
         }
 
         return mapToDto(savedInvoice);
+    }
+
+    /**
+     * Subtract quantity from warehouse inventory
+     */
+    private void subtractFromWarehouseInventory(WareHouse warehouse, MedicineLookup medicine, int qty) {
+        Optional<WarehouseInventory> existingInventory = warehouseInventoryRepository
+                .findByWarehouseAndMedicine(warehouse, medicine);
+
+        if (existingInventory.isPresent()) {
+            WarehouseInventory inventory = existingInventory.get();
+            inventory.setTotalQty(Math.max(0, inventory.getTotalQty() - qty));
+            warehouseInventoryRepository.save(inventory);
+        }
     }
 
     /**
@@ -120,29 +200,6 @@ public class InvoiceService {
                     .build();
             warehouseInventoryRepository.save(inventory);
         }
-    }
-
-    @Transactional
-    public InvoiceDto updateInvoice(Long id, InvoiceDto dto) {
-        Invoice invoice = invoiceRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Invoice not found with id: " + id));
-
-        Supplier supplier = supplierRepository.findById(dto.getSupplierId())
-                .orElseThrow(() -> new RuntimeException("Supplier not found with id: " + dto.getSupplierId()));
-
-        WareHouse warehouse = wareHouseRepository.findById(dto.getWarehouseId())
-                .orElseThrow(() -> new RuntimeException("Warehouse not found with id: " + dto.getWarehouseId()));
-
-        invoice.setSupplier(supplier);
-        invoice.setPaymentMode(dto.getPaymentMode());
-        invoice.setInvoiceNumber(dto.getInvoiceNumber());
-        invoice.setInvoiceAmount(dto.getInvoiceAmount());
-        invoice.setInvoiceDate(dto.getInvoiceDate());
-        invoice.setWarehouse(warehouse);
-
-        invoiceRepository.save(invoice);
-
-        return mapToDto(invoice);
     }
 
     @Transactional
@@ -269,6 +326,10 @@ public class InvoiceService {
                 .map(this::mapStockToDto)
                 .collect(Collectors.toList());
 
+        List<InvoiceDocumentDto> documents = invoiceDocumentRepository.findByInvoiceId(invoice.getId()).stream()
+                .map(invoiceDocumentService::mapToDto)
+                .collect(Collectors.toList());
+
         return InvoiceDto.builder()
                 .id(invoice.getId())
                 .supplierId(invoice.getSupplier().getSupplierId())
@@ -280,6 +341,7 @@ public class InvoiceService {
                 .warehouseId(invoice.getWarehouse().getId())
                 .warehouseName(invoice.getWarehouse().getName())
                 .items(items)
+                .documents(documents)
                 .createdBy(invoice.getCreatedBy())
                 .createdAt(invoice.getCreatedAt() != null ? 
                         invoice.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : null)

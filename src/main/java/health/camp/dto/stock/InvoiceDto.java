@@ -42,4 +42,6 @@ public class InvoiceDto {
     private String createdBy;
 
     private String createdAt;
+
+    private List<InvoiceDocumentDto> documents;
 }

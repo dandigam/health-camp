@@ -23,4 +23,7 @@ public interface SupplierRequestRepository extends JpaRepository<SupplierRequest
        GROUP BY s.status
        """)
 List<Object[]> countByWarehouseIdGroupByStatu(@Param("warehouseId") Long warehouseId);
+
+    @Query("SELECT s.purchaseOrder FROM SupplierRequest s WHERE s.purchaseOrder LIKE :prefix ORDER BY s.purchaseOrder DESC LIMIT 1")
+    String findLatestPurchaseOrderByPrefix(@Param("prefix") String prefix);
 }

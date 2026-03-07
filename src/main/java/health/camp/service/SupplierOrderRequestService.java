@@ -1,10 +1,14 @@
 package health.camp.service;
 
+import health.camp.dto.stock.InvoiceDocumentDto;
 import health.camp.dto.supplier.MonthlyOrderTrackingDto;
 import health.camp.dto.supplier.SupplierOrderRequestDto;
 import health.camp.entity.*;
+import health.camp.model.enums.InvoiceType;
 import health.camp.repository.*;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +33,11 @@ public class SupplierOrderRequestService {
     private final SupplierRepository supplierRepository;
     private final MedicineRepository medicineRepository;
     private final WarehouseInventoryRepository warehouseInventoryRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final InvoiceStockRepository invoiceStockRepository;
+    private final InvoiceDocumentRepository invoiceDocumentRepository;
+    private final InvoiceDocumentService invoiceDocumentService;
+
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -49,6 +58,7 @@ public class SupplierOrderRequestService {
                 .warehouse(warehouse)
                 .supplier(supplier)
                 .status(status)
+                .purchaseOrder(generatePurchaseOrderNumber())
                 .items(new ArrayList<>())
                 .build();
 
@@ -75,6 +85,7 @@ public class SupplierOrderRequestService {
 
         dto.setId(savedRequest.getRequestId());
         dto.setStatus(savedRequest.getStatus().name());
+        dto.setPurchaseOrder(savedRequest.getPurchaseOrder());
         return dto;
     }
 
@@ -89,6 +100,25 @@ public class SupplierOrderRequestService {
         }
 
         supplierRequestRepository.save(request);
+
+        // Check if invoice info is provided - create Invoice with type REQUEST
+        Invoice invoice = null;
+        boolean hasInvoiceInfo = dto.getInvoiceNumber() != null || dto.getInvoiceDate() != null ||
+                                 dto.getInvoiceAmount() != null || dto.getPaymentMode() != null;
+        
+        if (hasInvoiceInfo) {
+            invoice = Invoice.builder()
+                    .supplier(request.getSupplier())
+                    .warehouse(request.getWarehouse())
+                    .invoiceNumber(dto.getInvoiceNumber())
+                    .invoiceDate(dto.getInvoiceDate())
+                    .invoiceAmount(dto.getInvoiceAmount())
+                    .paymentMode(dto.getPaymentMode())
+                    .type(InvoiceType.REQUEST)
+                    .supplierRequest(request)
+                    .build();
+            invoice = invoiceRepository.save(invoice);
+        }
 
         // Update items if provided
         if (dto.getItems() != null) {
@@ -117,6 +147,17 @@ public class SupplierOrderRequestService {
                         // Add to warehouse inventory only once (first time received)
                         if (!alreadyReceived) {
                             addToWarehouseInventory(request.getWarehouse(), item.getMedicine(), itemDto.getReceivedQuantity());
+                            
+                            // Create InvoiceStock entry if invoice was created
+                            if (invoice != null) {
+                                InvoiceStock invoiceStock = InvoiceStock.builder()
+                                        .invoice(invoice)
+                                        .medicine(item.getMedicine())
+                                        .quantity(itemDto.getReceivedQuantity())
+                                        .warehouse(request.getWarehouse())
+                                        .build();
+                                invoiceStockRepository.save(invoiceStock);
+                            }
                         }
                     }
                     if (itemDto.getUnitPrice() != null) {
@@ -189,7 +230,7 @@ public class SupplierOrderRequestService {
                 .orElseThrow(() -> new RuntimeException("Warehouse not found"));
 
         return supplierRequestRepository.findByWarehouse(warehouse).stream()
-                .map(this::mapToDto)
+                .filter(res -> !res.getStatus().equals(Status.CANCELLED)).map(this::mapToDto)
                 .collect(Collectors.toList());
     }
 
@@ -317,6 +358,9 @@ public class SupplierOrderRequestService {
                 })
                 .collect(Collectors.toList());
 
+        // Look up invoice linked to this supplier request
+        Invoice invoice = invoiceRepository.findBySupplierRequest(request).orElse(null);
+
         return SupplierOrderRequestDto.builder()
                 .id(request.getRequestId())
                 .warehouseId(request.getWarehouse().getId())
@@ -324,11 +368,51 @@ public class SupplierOrderRequestService {
                 .supplierId(request.getSupplier().getSupplierId())
                 .supplierName(request.getSupplier().getName())
                 .status(request.getStatus().name())
+                .purchaseOrder(request.getPurchaseOrder())
                 .createdAt(request.getCreatedAt() != null ? request.getCreatedAt().format(DATE_FORMATTER) : null)
                 .updatedAt(request.getUpdatedAt() != null ? request.getUpdatedAt().format(DATE_FORMATTER) : null)
                 .itemCount(itemDtos.size())
+                .invoiceNumber(invoice != null ? invoice.getInvoiceNumber() : null)
+                .invoiceDate(invoice != null ? invoice.getInvoiceDate() : null)
+                .invoiceAmount(invoice != null ? invoice.getInvoiceAmount() : null)
+                .paymentMode(invoice != null ? invoice.getPaymentMode() : null)
+                .invoiceId(invoice != null ? invoice.getId() : null)
+                .invoiceType(invoice != null && invoice.getType() != null ? invoice.getType().name() : null)
+                .invoiceCreatedAt(invoice != null && invoice.getCreatedAt() != null ? invoice.getCreatedAt().format(DATE_FORMATTER) : null)
+                .invoiceDocuments(invoice != null ?
+                        invoiceDocumentRepository.findByInvoiceId(invoice.getId()).stream()
+                                .map(invoiceDocumentService::mapToDto)
+                                .collect(Collectors.toList())
+                        : new ArrayList<>())
                 .items(itemDtos)
                 .build();
+    }
+
+    /**
+     * Get the invoice ID linked to a supplier request. Throws if no invoice found.
+     */
+    public Long getInvoiceIdByRequestId(Long requestId) {
+        Invoice invoice = invoiceRepository.findBySupplierRequestRequestId(requestId)
+                .orElseThrow(() -> new RuntimeException(
+                        "No invoice found for supplier request id: " + requestId));
+        return invoice.getId();
+    }
+
+    /**
+     * Generate a unique purchase order number in the format PO-YYYYMMDD-XXXXX
+     */
+    private String generatePurchaseOrderNumber() {
+        String dateStr = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String prefix = "PO-" + dateStr + "-";
+        String latestPo = supplierRequestRepository.findLatestPurchaseOrderByPrefix(prefix + "%");
+
+        int nextSequence = 1;
+        if (latestPo != null) {
+            String sequencePart = latestPo.substring(latestPo.lastIndexOf('-') + 1);
+            nextSequence = Integer.parseInt(sequencePart) + 1;
+        }
+
+        return prefix + String.format("%05d", nextSequence);
     }
 
     /**

@@ -2,6 +2,7 @@ package health.camp.repository;
 
 import health.camp.entity.Invoice;
 import health.camp.entity.Supplier;
+import health.camp.entity.SupplierRequest;
 import health.camp.entity.WareHouse;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -21,6 +22,11 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     List<Invoice> findByWarehouseId(Long warehouseId);
 
     Optional<Invoice> findByInvoiceNumber(String invoiceNumber);
+
+    Optional<Invoice> findBySupplierRequest(SupplierRequest supplierRequest);
+
+    @Query("SELECT i FROM Invoice i WHERE i.supplierRequest.requestId = ?1")
+    Optional<Invoice> findBySupplierRequestRequestId(Long supplierRequestId);
 
     @Query("SELECT i FROM Invoice i WHERE i.warehouse.id = ?1 AND i.invoiceDate BETWEEN ?2 AND ?3")
     List<Invoice> findByWarehouseIdAndDateRange(Long warehouseId, LocalDate startDate, LocalDate endDate);

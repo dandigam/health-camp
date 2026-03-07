@@ -1,5 +1,6 @@
 package health.camp.entity;
 
+import health.camp.model.enums.InvoiceType;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -43,9 +44,20 @@ public class Invoice extends BaseEntity {
     @JoinColumn(name = "warehouse_id", nullable = false)
     private WareHouse warehouse;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", length = 20)
+    private InvoiceType type;
+
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<InvoiceStock> invoiceStocks = new ArrayList<>();
+
+    @ManyToOne
+    @JoinColumn(name = "supplier_request_id", nullable = true)
+    private SupplierRequest supplierRequest; // optional link
+    
+
+    
 
     public void addInvoiceStock(InvoiceStock invoiceStock) {
         invoiceStocks.add(invoiceStock);

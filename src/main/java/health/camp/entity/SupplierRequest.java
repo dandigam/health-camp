@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import health.camp.model.enums.Status;
@@ -32,9 +33,16 @@ public class SupplierRequest extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 15)
-    private Status status; 
+    private Status status;
+
+    @Column(name = "purchase_order")
+    private String purchaseOrder;
 
     @OneToMany(mappedBy = "request", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SupplierRequestItem> items;
+
+    @OneToMany(mappedBy = "supplierRequest")
+    private List<Invoice> invoices = new ArrayList<>();
+
 }
 

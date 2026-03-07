@@ -1,11 +1,18 @@
 package health.camp.controller;
 
+import health.camp.dto.stock.InvoiceDocumentDto;
 import health.camp.dto.supplier.MonthlyOrderTrackingDto;
 import health.camp.dto.supplier.SupplierOrderRequestDto;
+import health.camp.service.InvoiceDocumentService;
 import health.camp.service.SupplierOrderRequestService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -16,6 +23,8 @@ import java.util.List;
 public class SupplierOrderRequestController {
 
     private final SupplierOrderRequestService supplierOrderRequestService;
+
+    private final InvoiceDocumentService invoiceDocumentService;
 
     /**
      * Create a new supplier order request
@@ -110,6 +119,57 @@ public class SupplierOrderRequestController {
             @PathVariable Long requestId,
             @PathVariable Long itemId) {
         supplierOrderRequestService.removeItemFromRequest(requestId, itemId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ===== Invoice Document endpoints for Supplier Orders =====
+
+    /**
+     * Upload one or multiple invoice documents (PDF, images) for a supplier order's invoice
+     * POST /api/supplier-orders/{requestId}/invoice/documents
+     */
+    @PostMapping(value = "/{requestId}/invoice/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<List<InvoiceDocumentDto>> uploadInvoiceDocuments(
+            @PathVariable Long requestId,
+            @RequestParam("files") MultipartFile[] files) {
+        Long invoiceId = supplierOrderRequestService.getInvoiceIdByRequestId(requestId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(invoiceDocumentService.uploadDocuments(invoiceId, files));
+    }
+
+    /**
+     * Get all invoice documents for a supplier order
+     * GET /api/supplier-orders/{requestId}/invoice/documents
+     */
+    @GetMapping("/{requestId}/invoice/documents")
+    public ResponseEntity<List<InvoiceDocumentDto>> getInvoiceDocuments(@PathVariable Long requestId) {
+        Long invoiceId = supplierOrderRequestService.getInvoiceIdByRequestId(requestId);
+        return ResponseEntity.ok(invoiceDocumentService.getDocumentsByInvoiceId(invoiceId));
+    }
+
+    /**
+     * Download a specific invoice document
+     * GET /api/supplier-orders/invoice/documents/{documentId}/download
+     */
+    @GetMapping("/invoice/documents/{documentId}/download")
+    public ResponseEntity<Resource> downloadInvoiceDocument(@PathVariable Long documentId) {
+        Resource resource = invoiceDocumentService.loadFileAsResource(documentId);
+        String contentType = invoiceDocumentService.getContentType(documentId);
+        String originalFileName = invoiceDocumentService.getOriginalFileName(documentId);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType != null ? contentType : "application/octet-stream"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + originalFileName + "\"")
+                .body(resource);
+    }
+
+    /**
+     * Delete a specific invoice document
+     * DELETE /api/supplier-orders/invoice/documents/{documentId}
+     */
+    @DeleteMapping("/invoice/documents/{documentId}")
+    public ResponseEntity<Void> deleteInvoiceDocument(@PathVariable Long documentId) {
+        invoiceDocumentService.deleteDocument(documentId);
         return ResponseEntity.noContent().build();
     }
 }

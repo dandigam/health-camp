@@ -2,16 +2,18 @@ package health.camp.entity;
 
 import lombok.Getter;
 import lombok.Setter;
-import javax.persistence.*;
 import java.time.LocalDateTime;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+
 @Entity
-@Table(name = "documents")
+@jakarta.persistence.Table(name = "documents")
 @Getter
 @Setter
 public class Document {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @jakarta.persistence.GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
     private Long id;
 
     private String documentName;

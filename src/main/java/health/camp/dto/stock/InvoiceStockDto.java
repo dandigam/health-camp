@@ -26,6 +26,15 @@ public class InvoiceStockDto {
     // Medicine type (tablet, syrup, etc.) - used when creating new medicine
     private String medicineType;
 
+    // Strength (e.g., 50mg, 100mg) - used when creating new medicine
+    private String strength;
+
+    // Unit (e.g., mg, g, ml) - used when creating new medicine
+    private String unit;
+
+    // Manufacturer - used when creating new medicine
+    private String manufacturer;
+
     // Flag to indicate if medicine already exists in DB
     // true = use medicineId, false = create new medicine using medicineName
     @Builder.Default
@@ -45,4 +54,6 @@ public class InvoiceStockDto {
     private Long warehouseId;
 
     private String warehouseName;
+
+    private Integer currentStock;
 }

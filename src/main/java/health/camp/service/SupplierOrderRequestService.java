@@ -1,14 +1,11 @@
 package health.camp.service;
 
-import health.camp.dto.stock.InvoiceDocumentDto;
 import health.camp.dto.supplier.MonthlyOrderTrackingDto;
 import health.camp.dto.supplier.SupplierOrderRequestDto;
 import health.camp.entity.*;
-import health.camp.model.enums.InvoiceType;
 import health.camp.repository.*;
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import health.camp.model.enums.Status;
@@ -35,8 +33,7 @@ public class SupplierOrderRequestService {
     private final WarehouseInventoryRepository warehouseInventoryRepository;
     private final InvoiceRepository invoiceRepository;
     private final InvoiceStockRepository invoiceStockRepository;
-    private final InvoiceDocumentRepository invoiceDocumentRepository;
-    private final InvoiceDocumentService invoiceDocumentService;
+    private final InvoiceService invoiceService;
 
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -69,6 +66,9 @@ public class SupplierOrderRequestService {
             for (SupplierOrderRequestDto.ItemDto itemDto : dto.getItems()) {
                 MedicineLookup medicine = medicineRepository.findById(itemDto.getMedicineId())
                         .orElseThrow(() -> new RuntimeException("Medicine not found: " + itemDto.getMedicineId()));
+                itemDto.setStrength(medicine.getStrength());
+                itemDto.setUnit(medicine.getUnit());
+                itemDto.setManufacturer(medicine.getManufacturer());
 
                 SupplierRequestItem item = SupplierRequestItem.builder()
                         .request(savedRequest)
@@ -103,22 +103,11 @@ public class SupplierOrderRequestService {
 
         // Check if invoice info is provided - create Invoice with type REQUEST
         Invoice invoice = null;
-        boolean hasInvoiceInfo = dto.getInvoiceNumber() != null || dto.getInvoiceDate() != null ||
-                                 dto.getInvoiceAmount() != null || dto.getPaymentMode() != null;
-        
-        if (hasInvoiceInfo) {
-            invoice = Invoice.builder()
-                    .supplier(request.getSupplier())
-                    .warehouse(request.getWarehouse())
-                    .invoiceNumber(dto.getInvoiceNumber())
-                    .invoiceDate(dto.getInvoiceDate())
-                    .invoiceAmount(dto.getInvoiceAmount())
-                    .paymentMode(dto.getPaymentMode())
-                    .type(InvoiceType.REQUEST)
-                    .supplierRequest(request)
-                    .build();
-            invoice = invoiceRepository.save(invoice);
+
+        if(Objects.nonNull(dto.getInvoice())) {
+            invoiceService.saveInvoice(dto.getInvoice());
         }
+        
 
         // Update items if provided
         if (dto.getItems() != null) {
@@ -372,18 +361,6 @@ public class SupplierOrderRequestService {
                 .createdAt(request.getCreatedAt() != null ? request.getCreatedAt().format(DATE_FORMATTER) : null)
                 .updatedAt(request.getUpdatedAt() != null ? request.getUpdatedAt().format(DATE_FORMATTER) : null)
                 .itemCount(itemDtos.size())
-                .invoiceNumber(invoice != null ? invoice.getInvoiceNumber() : null)
-                .invoiceDate(invoice != null ? invoice.getInvoiceDate() : null)
-                .invoiceAmount(invoice != null ? invoice.getInvoiceAmount() : null)
-                .paymentMode(invoice != null ? invoice.getPaymentMode() : null)
-                .invoiceId(invoice != null ? invoice.getId() : null)
-                .invoiceType(invoice != null && invoice.getType() != null ? invoice.getType().name() : null)
-                .invoiceCreatedAt(invoice != null && invoice.getCreatedAt() != null ? invoice.getCreatedAt().format(DATE_FORMATTER) : null)
-                .invoiceDocuments(invoice != null ?
-                        invoiceDocumentRepository.findByInvoiceId(invoice.getId()).stream()
-                                .map(invoiceDocumentService::mapToDto)
-                                .collect(Collectors.toList())
-                        : new ArrayList<>())
                 .items(itemDtos)
                 .build();
     }

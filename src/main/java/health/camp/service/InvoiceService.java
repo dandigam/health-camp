@@ -1,5 +1,6 @@
 package health.camp.service;
 
+import health.camp.dto.stock.DocumentSummary;
 import health.camp.dto.stock.InvoiceDocumentDto;
 import health.camp.dto.stock.InvoiceDto;
 import health.camp.dto.stock.InvoiceStockDto;
@@ -27,8 +28,7 @@ public class InvoiceService {
     private final WareHouseRepository wareHouseRepository;
     private final MedicineRepository medicineRepository;
     private final WarehouseInventoryRepository warehouseInventoryRepository;
-    private final InvoiceDocumentRepository invoiceDocumentRepository;
-    private final InvoiceDocumentService invoiceDocumentService;
+    private final DocumentRepository documentRepository;
 
     @Transactional
     public InvoiceDto saveInvoice(InvoiceDto dto) {
@@ -51,6 +51,15 @@ public class InvoiceService {
             invoice.setInvoiceAmount(dto.getInvoiceAmount());
             invoice.setInvoiceDate(dto.getInvoiceDate());
             invoice.setWarehouse(warehouse);
+            // Update documentIds if documents are provided
+            invoice.setDocumentIds(
+                dto.getDocuments() != null && !dto.getDocuments().isEmpty() ?
+                    dto.getDocuments().stream()
+                        .map(DocumentSummary::getDocumentId)
+                        .map(String::valueOf)
+                        .collect(Collectors.joining(","))
+                    : null
+            );
             
             // For update: Remove old stock items that are not in the new request
             // Get IDs of items in the request
@@ -73,14 +82,22 @@ public class InvoiceService {
         } else {
             // Create new invoice
             invoice = Invoice.builder()
-                    .supplier(supplier)
-                    .paymentMode(dto.getPaymentMode())
-                    .invoiceNumber(dto.getInvoiceNumber())
-                    .invoiceAmount(dto.getInvoiceAmount())
-                    .invoiceDate(dto.getInvoiceDate())
-                    .warehouse(warehouse)
-                    .type(InvoiceType.DIRECT)
-                    .build();
+                .supplier(supplier)
+                .paymentMode(dto.getPaymentMode())
+                .invoiceNumber(dto.getInvoiceNumber())
+                .invoiceAmount(dto.getInvoiceAmount())
+                .invoiceDate(dto.getInvoiceDate())
+                .warehouse(warehouse)
+                .type(InvoiceType.DIRECT)
+                .documentIds(
+                    dto.getDocuments() != null && !dto.getDocuments().isEmpty() ?
+                        dto.getDocuments().stream()
+                            .map(DocumentSummary::getDocumentId)
+                            .map(String::valueOf)
+                            .collect(Collectors.joining(","))
+                        : null
+                )
+                .build();
         }
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
@@ -106,6 +123,9 @@ public class InvoiceService {
                         MedicineLookup newMedicine = MedicineLookup.builder()
                                 .name(itemDto.getMedicineName().trim())
                                 .type(itemDto.getMedicineType())
+                                .strength(itemDto.getStrength())
+                                .unit(itemDto.getUnit())
+                                .manufacturer(itemDto.getManufacturer())
                                 .build();
                         medicine = medicineRepository.save(newMedicine);
                     }
@@ -151,6 +171,9 @@ public class InvoiceService {
                             .expDate(itemDto.getExpDate())
                             .quantity(itemDto.getQuantity())
                             .warehouse(warehouse)
+                            .strength(medicine.getStrength())
+                            .unit(medicine.getUnit())
+                            .manufacturer(medicine.getManufacturer())
                             .build();
 
                     invoiceStockRepository.save(stock);
@@ -245,6 +268,7 @@ public class InvoiceService {
     public InvoiceStockDto addStockItem(Long invoiceId, InvoiceStockDto dto) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new RuntimeException("Invoice not found with id: " + invoiceId));
+          
 
         MedicineLookup medicine = medicineRepository.findById(dto.getMedicineId())
                 .orElseThrow(() -> new RuntimeException("Medicine not found with id: " + dto.getMedicineId()));
@@ -255,7 +279,7 @@ public class InvoiceService {
         InvoiceStock stock = InvoiceStock.builder()
                 .invoice(invoice)
                 .medicine(medicine)
-                .hsnNo(dto.getHsnNo())
+                    
                 .batchNo(dto.getBatchNo())
                 .expDate(dto.getExpDate())
                 .quantity(dto.getQuantity())
@@ -293,11 +317,6 @@ public class InvoiceService {
         invoiceStockRepository.delete(stock);
     }
 
-    public List<InvoiceStockDto> getStockItemsByInvoice(Long invoiceId) {
-        return invoiceStockRepository.findByInvoiceId(invoiceId).stream()
-                .map(this::mapStockToDto)
-                .collect(Collectors.toList());
-    }
 
     public List<InvoiceStockDto> getStockItemsByWarehouse(Long warehouseId) {
         return invoiceStockRepository.findByWarehouseId(warehouseId).stream()
@@ -305,47 +324,44 @@ public class InvoiceService {
                 .collect(Collectors.toList());
     }
 
-    public List<InvoiceStockDto> getExpiredStock(Long warehouseId) {
-        return invoiceStockRepository.findExpiredStockByWarehouseId(warehouseId, LocalDate.now()).stream()
-                .map(this::mapStockToDto)
-                .collect(Collectors.toList());
-    }
 
-    public List<InvoiceStockDto> getExpiringStock(Long warehouseId, int daysAhead) {
-        LocalDate startDate = LocalDate.now();
-        LocalDate endDate = startDate.plusDays(daysAhead);
-        return invoiceStockRepository.findExpiringStockByWarehouseId(warehouseId, startDate, endDate).stream()
-                .map(this::mapStockToDto)
-                .collect(Collectors.toList());
-    }
 
     // Mapper methods
 
     private InvoiceDto mapToDto(Invoice invoice) {
         List<InvoiceStockDto> items = invoiceStockRepository.findByInvoiceId(invoice.getId()).stream()
-                .map(this::mapStockToDto)
-                .collect(Collectors.toList());
+            .map(this::mapStockToDto)
+            .collect(Collectors.toList());
 
-        List<InvoiceDocumentDto> documents = invoiceDocumentRepository.findByInvoiceId(invoice.getId()).stream()
-                .map(invoiceDocumentService::mapToDto)
-                .collect(Collectors.toList());
+        List<DocumentSummary> documentSummaries = new ArrayList<>();
+        if (invoice.getDocumentIds() != null && !invoice.getDocumentIds().isEmpty()) {
+            String[] docIds = invoice.getDocumentIds().split(",");
+            for (String docIdStr : docIds) {
+            try {
+                Long docId = Long.parseLong(docIdStr.trim());
+                health.camp.entity.Document doc = documentRepository.findById(docId).orElse(null);
+                if (doc != null) {
+                documentSummaries.add(new health.camp.dto.stock.DocumentSummary(doc.getId(), doc.getDocumentName()));
+                }
+            } catch (NumberFormatException ignored) {}
+            }
+        }
 
         return InvoiceDto.builder()
-                .id(invoice.getId())
-                .supplierId(invoice.getSupplier().getSupplierId())
-                .supplierName(invoice.getSupplier().getName())
-                .paymentMode(invoice.getPaymentMode())
-                .invoiceNumber(invoice.getInvoiceNumber())
-                .invoiceAmount(invoice.getInvoiceAmount())
-                .invoiceDate(invoice.getInvoiceDate())
-                .warehouseId(invoice.getWarehouse().getId())
-                .warehouseName(invoice.getWarehouse().getName())
-                .items(items)
-                .documents(documents)
-                .createdBy(invoice.getCreatedBy())
-                .createdAt(invoice.getCreatedAt() != null ? 
-                        invoice.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : null)
-                .build();
+            .id(invoice.getId())
+            .supplierId(invoice.getSupplier().getSupplierId())
+            .supplierName(invoice.getSupplier().getName())
+            .paymentMode(invoice.getPaymentMode())
+            .invoiceNumber(invoice.getInvoiceNumber())
+            .invoiceAmount(invoice.getInvoiceAmount())
+            .invoiceDate(invoice.getInvoiceDate())
+            .warehouseId(invoice.getWarehouse().getId())
+            .warehouseName(invoice.getWarehouse().getName())
+            .items(items)
+            .documents(documentSummaries)
+            .createdAt(invoice.getCreatedAt() != null ? 
+                invoice.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : null)
+            .build();
     }
 
     private InvoiceStockDto mapStockToDto(InvoiceStock stock) {
@@ -354,12 +370,19 @@ public class InvoiceService {
                 .invoiceId(stock.getInvoice().getId())
                 .medicineId(stock.getMedicine().getMedicineId())
                 .medicineName(stock.getMedicine().getName())
+                .medicineType(stock.getMedicine().getType())
                 .hsnNo(stock.getHsnNo())
                 .batchNo(stock.getBatchNo())
                 .expDate(stock.getExpDate())
                 .quantity(stock.getQuantity())
+                .currentStock(warehouseInventoryRepository.findByWarehouseAndMedicine(stock.getWarehouse(), stock.getMedicine())
+                        .map(WarehouseInventory::getTotalQty)
+                        .orElse(0))
                 .warehouseId(stock.getWarehouse().getId())
                 .warehouseName(stock.getWarehouse().getName())
+                .strength(stock.getMedicine().getStrength())
+                .unit(stock.getMedicine().getUnit())
+                .manufacturer(stock.getMedicine().getManufacturer())
                 .build();
     }
 }

@@ -2,11 +2,10 @@ package health.camp.dto.supplier;
 
 import lombok.*;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 
-import health.camp.dto.stock.InvoiceDocumentDto;
+import health.camp.dto.stock.DocumentSummary;
+import health.camp.dto.stock.InvoiceDto;
 
 @Getter
 @Setter
@@ -27,19 +26,10 @@ public class SupplierOrderRequestDto {
     private Integer itemCount;
     private List<ItemDto> items;
 
-    // Invoice info (input for receiving stock)
-    private String invoiceNumber;
-    private LocalDate invoiceDate;
-    private BigDecimal invoiceAmount;
-    private String paymentMode;
+    private Boolean isPriority;
+    private InvoiceDto invoice;
 
-    // Invoice response fields
-    private Long invoiceId;
-    private String invoiceType;
-    private String invoiceCreatedAt;
-
-    // Invoice documents
-    private List<InvoiceDocumentDto> invoiceDocuments;
+    private List<DocumentSummary> documents;
 
     @Getter
     @Setter
@@ -51,6 +41,9 @@ public class SupplierOrderRequestDto {
         private Long medicineId;
         private String medicineName;
         private String medicineType;
+        private String strength;
+        private String unit;
+        private String manufacturer;
         private Integer currentQty;
         private Integer requestedQuantity;
         private Integer receivedQuantity;

@@ -18,6 +18,8 @@ import java.util.List;
 @AllArgsConstructor
 @SuperBuilder
 public class Invoice extends BaseEntity {
+    @Column(name = "document_ids")
+    private String documentIds;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -52,9 +54,9 @@ public class Invoice extends BaseEntity {
     @Builder.Default
     private List<InvoiceStock> invoiceStocks = new ArrayList<>();
 
-    @ManyToOne
-    @JoinColumn(name = "supplier_request_id", nullable = true)
-    private SupplierRequest supplierRequest; // optional link
+    @OneToOne
+    @JoinColumn(name = "supplier_request_id", unique = true)
+    private SupplierRequest supplierRequest;
     
 
     

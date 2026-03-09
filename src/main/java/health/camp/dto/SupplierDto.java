@@ -36,6 +36,9 @@ public class SupplierDto {
         private Long id;
         private String name;
         private String type; // tablet, syrup, injection, etc.
+        private String strength; // e.g., 50mg, 100mg
+        private String unit; // e.g., mg, g, ml
+        private String manufacturer;
         private Long medicineId;
         private Integer currentQty; // Current inventory quantity in warehouse
     }

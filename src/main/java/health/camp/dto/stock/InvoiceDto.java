@@ -30,7 +30,6 @@ public class InvoiceDto {
 
     @NotNull(message = "Invoice date is required")
     private LocalDate invoiceDate;
-
   
     private Long warehouseId;
 
@@ -39,9 +38,9 @@ public class InvoiceDto {
     @Valid
     private List<InvoiceStockDto> items;
 
-    private String createdBy;
+    private List<DocumentSummary> documents;
 
+    private String createdBy;
     private String createdAt;
 
-    private List<InvoiceDocumentDto> documents;
 }

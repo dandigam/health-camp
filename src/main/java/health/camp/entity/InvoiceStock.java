@@ -40,6 +40,15 @@ public class InvoiceStock extends BaseEntity {
     @Column(name = "quantity")
     private Integer quantity;
 
+    @Column(name = "strength", length = 50)
+    private String strength;
+
+    @Column(name = "unit", length = 20)
+    private String unit;
+
+    @Column(name = "manufacturer", length = 100)
+    private String manufacturer;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "warehouse_id", nullable = false)
     private WareHouse warehouse;

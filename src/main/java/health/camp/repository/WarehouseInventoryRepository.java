@@ -14,8 +14,11 @@ public interface WarehouseInventoryRepository extends JpaRepository<WarehouseInv
 
      
     List<WarehouseInventory> findByWarehouse(WareHouse warehouse);
+   
     Optional<WarehouseInventory> findByWarehouseAndMedicine(WareHouse warehouse, MedicineLookup medicine);
+    
     List<WarehouseInventory> findByWarehouseAndTotalQtyLessThanEqual(WareHouse warehouse, Integer qty);
+   
     List<WarehouseInventory> findByWarehouseAndTotalQtyGreaterThan(WareHouse warehouse, Integer qty);
    
     @Query("SELECT COUNT(DISTINCT wi.medicine) FROM WarehouseInventory wi WHERE wi.warehouse.id = ?1")

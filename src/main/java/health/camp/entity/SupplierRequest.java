@@ -23,6 +23,9 @@ public class SupplierRequest extends BaseEntity {
     @Column(name = "request_id")
     private Long requestId;
 
+    @Column(name = "purchase_order")
+    private String purchaseOrder;
+
     @ManyToOne
     @JoinColumn(name = "warehouse_id", nullable = false)
     private WareHouse warehouse;
@@ -35,14 +38,14 @@ public class SupplierRequest extends BaseEntity {
     @Column(name = "status", length = 15)
     private Status status;
 
-    @Column(name = "purchase_order")
-    private String purchaseOrder;
+    @Column(name = "priority")
+    private Boolean priority = false;
 
     @OneToMany(mappedBy = "request", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SupplierRequestItem> items;
 
-    @OneToMany(mappedBy = "supplierRequest")
-    private List<Invoice> invoices = new ArrayList<>();
+    @OneToOne(mappedBy = "supplierRequest", cascade = CascadeType.ALL)
+    private Invoice invoice;
 
 }
 
